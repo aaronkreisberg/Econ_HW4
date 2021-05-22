@@ -2,28 +2,32 @@
 title: 'Homework 4: SCC and Climate Policy'
 author: "Iris Foxfoot"
 date: "5/19/2021"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
 options(scipen=999)
 library(here)
 library(tidyverse)
 library(patchwork)
 ```
 
+1. Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Omit an intercept term; damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
+
+$$ damages = -3018856250104(warming) + 19589020155100(warming)^2$$
 ```{r}
 #read in data
 damages_data <- read_csv(here("damages.csv"))
 
 warming_data <- read_csv(here("warming.csv"))
-```
 
-1. Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Omit an intercept term; damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
-
-$$ damages = -3018856250104(warming) + 19589020155100(warming)^2$$
-```{r}
 #creating vectors of values
 damages_data <- damages_data %>% 
   mutate(warming2 = warming^2)
@@ -38,14 +42,14 @@ damages_quad_model=lm(method = 'lm', damages ~ warming + warming2)
 
 summary(damages_quad_model)
 
-#idk what I'm doing here but the internet says do it
+#creating a sequence of warming values to test predictions on
 warmingvalues <- seq(0.6900000, 9.243000, 0.1)
 
 #generating predictions
 predictedcounts <- predict(damages_quad_model,list(warming=warmingvalues, warming2=warmingvalues^2))
 
 #plotting
-plot(warming, damages, pch=16, xlab = "warming (Celsius)", ylab = "damage", cex.lab = 1.3, col = "blue");
+plot(warming, damages, pch=16, xlab = "Warming (Celsius)", ylab = "damage in $", cex.lab = 1.3, col = "blue");
 lines(warmingvalues, predictedcounts, col = "red", lwd = 3)
 ```
 
@@ -64,8 +68,9 @@ warming_scenarios <- warming_data %>%
   mutate(damage_no_pulse = damage_function(warming_baseline)) %>% 
   mutate(damage_with_pulse = damage_function(warming_pulse)) %>% 
   mutate(pulse_damages = damage_with_pulse - damage_no_pulse) %>% 
-  mutate(pulse_damages_per_ton = pulse_damages/35)
+  mutate(pulse_damages_per_ton = pulse_damages/35000000000)
 
+#create graphs
 damage_no_pulse_graph <- ggplot(data = warming_scenarios, aes(x = year, y = damage_no_pulse)) +
   geom_point()
 
@@ -77,11 +82,61 @@ pulse_damages_graph <- ggplot(data = warming_scenarios, aes(x = year, y = pulse_
 
 pulse_damages_per_ton_graph <- ggplot(data = warming_scenarios, aes(x = year, y = pulse_damages_per_ton)) +
   geom_point()
-
+ 
+#put the graphs together
 (damage_no_pulse_graph + damage_with_pulse_graph)/(pulse_damages_graph + pulse_damages_per_ton_graph)
 ```
 
-3. The SCC is the present discounted value of the stream of future damages caused by one
-additional ton of CO2. The Obama Administration used a discount rate of 3% to discount
-damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of
-the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates.
+3. The SCC is the present discounted value of the stream of future damages caused by one additional ton of CO2. The Obama Administration used a discount rate of 3% to discount damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates.
+
+
+```{r}
+#social cost of carbon function??? not working.
+scc_function <- function(x){
+  scc <- warming_scenarios$pulse_damages_per_ton/
+    I((1 + x)^(warming_scenarios$X1))
+  return(scc)
+}
+
+
+
+scc_function(0.02)
+
+#generate range of discount rates
+discount_rate <- seq(0.01, 0.1, 0.001)
+
+#create dataframe
+scc <- scc_function(discount_rate)
+
+scc <- data.frame(scc)
+```
+
+4. The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation:
+
+r = ρ + ηg
+
+Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from above.
+
+```{r}
+#finding discount rate
+ramsey_discount_rate <- 0.001 + 2*0.01
+
+#inserting this into discount rate
+ramsey_point <- data.frame(ramsey_discount_rate, scc_function(ramsey_discount_rate))
+
+ggplot() +
+  geom_point(data = scc, aes(x = discount_rate, y = scc)) +
+  geom_point(data = ramsey_point, aes(x = ramsey_discount_rate, y = scc_function.ramsey_discount_rate., color = "red", size = 1))#
+```
+
+5. Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change. Use these facts
+
+• If you undertake Policy A there are two possible outcomes. Either warming will occur as in the “baseline” (i.e. “no-pulse”) dataset above (this happens with probability 0.5) or warming each year will be 1.5 times that in the “baseline” dataset (with probability 0.5).
+
+• Under Policy B, warming will continue until 2050 as in the “baseline” dataset, and then will stabilize at 1.29 degrees and stay that way forever.
+
+• Society is risk neutral
+
+• Use a discount rate of 2% What is the expected present value of damages up to 2100 under Policy A? What is the expected present value of damages up to 2100 under Policy B? Suppose undertaking Policy A costs zero and undertaking Policy B costs X. How large could X be for it to still make economic sense to pursue Policy B instead of Policy A? Qualitatively, how would your answer change if society were risk averse?
+
+
