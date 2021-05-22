@@ -89,26 +89,36 @@ pulse_damages_per_ton_graph <- ggplot(data = warming_scenarios, aes(x = year, y 
 
 3. The SCC is the present discounted value of the stream of future damages caused by one additional ton of CO2. The Obama Administration used a discount rate of 3% to discount damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates.
 
+$ SCC = \sum_ 1/(1 +r)^t $ Fix formula...haha
 
 ```{r}
-#social cost of carbon function??? not working.
-scc_function <- function(x){
-  scc <- warming_scenarios$pulse_damages_per_ton/
-    I((1 + x)^(warming_scenarios$X1))
-  return(scc)
+#function that takes in two vectors
+#num = first co2 damage per ton
+#dr = discount rate
+scc_function <- function(num, dr = .02) {
+  sum <- 0;
+  r <- dr
+  for(t in c(1:length(num))){
+      present <- num[t]/(1+r)^t
+      sum <- sum+present
+  }
+  return(sum)
 }
 
+#generating a list of discount rates to use
+discount_rate <- seq(.01, .1, .001)
 
+#testing it out
+scc_function(warming_scenarios$pulse_damages_per_ton, discount_rate)
 
-scc_function(0.02)
+#creating a dataframe
+scc <- data.frame(discount_rate<-discount_rate, 
+scc<-scc_function(warming_scenarios$pulse_damages_per_ton, discount_rate))
+colnames(scc) = c("discount_rate", "scc")
 
-#generate range of discount rates
-discount_rate <- seq(0.01, 0.1, 0.001)
-
-#create dataframe
-scc <- scc_function(discount_rate)
-
-scc <- data.frame(scc)
+#graphing
+ggplot(data = scc, aes(x = discount_rate, y = scc)) +
+  geom_point()
 ```
 
 4. The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation:
@@ -122,11 +132,14 @@ Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on yo
 ramsey_discount_rate <- 0.001 + 2*0.01
 
 #inserting this into discount rate
-ramsey_point <- data.frame(ramsey_discount_rate, scc_function(ramsey_discount_rate))
+ramsey_point <- data.frame(ramsey_discount_rate, scc_function(warming_scenarios$pulse_damages_per_ton, ramsey_discount_rate))
+
+#changing col names
+colnames(ramsey_point) = c("discount_rate", "ramsey_scc")
 
 ggplot() +
   geom_point(data = scc, aes(x = discount_rate, y = scc)) +
-  geom_point(data = ramsey_point, aes(x = ramsey_discount_rate, y = scc_function.ramsey_discount_rate., color = "red", size = 1))#
+  geom_point(data = ramsey_point, aes(x = ramsey_discount_rate, y = ramsey_scc, color = "red", size = 1))#
 ```
 
 5. Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change. Use these facts
