@@ -2,7 +2,8 @@
 title: 'Homework 4: SCC and Climate Policy'
 author: "Iris Foxfoot"
 date: "5/19/2021"
-output: 
+output:
+  pdf_document: default
   html_document:
     code_folding: hide
 ---
@@ -118,7 +119,10 @@ colnames(scc) = c("discount_rate", "scc")
 
 #graphing
 ggplot(data = scc, aes(x = discount_rate, y = scc)) +
-  geom_point()
+  geom_point() +
+  labs(x = "Discount Rate (r)", 
+       y = "Social Cost of Carbon (SCC) in $",
+       title = "SCC in terms of Discount Rate") 
 ```
 
 4. The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation:
@@ -139,8 +143,22 @@ colnames(ramsey_point) = c("discount_rate", "ramsey_scc")
 
 ggplot() +
   geom_point(data = scc, aes(x = discount_rate, y = scc)) +
-  geom_point(data = ramsey_point, aes(x = ramsey_discount_rate, y = ramsey_scc, color = "red", size = 1))#
+  geom_point(data = ramsey_point, aes(x = ramsey_discount_rate, y = ramsey_scc, color = "red", size = 1)) +
+  labs(x = "Discount Rate (r)", 
+       y = "Social Cost of Carbon (SCC) in $",
+       title = "SCC in terms of Discount Rate") 
 ```
+
+
+
+$$ r = 0.001 + 2(0.01)= 0.021 $$
+
+
+$$ r=0.021, SCC=68.76 $$
+
+
+
+
 
 5. Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change. Use these facts
 
@@ -152,4 +170,35 @@ ggplot() +
 
 • Use a discount rate of 2% What is the expected present value of damages up to 2100 under Policy A? What is the expected present value of damages up to 2100 under Policy B? Suppose undertaking Policy A costs zero and undertaking Policy B costs X. How large could X be for it to still make economic sense to pursue Policy B instead of Policy A? Qualitatively, how would your answer change if society were risk averse?
 
+```{r}
+#create present value and damage function
+data_warming <- warming_scenarios %>%
+  mutate(warming_baseline_150 = warming_baseline * 1.5) %>% # Scenario A warming
+  mutate(predicted_baseline_150 = damage_function(warming_baseline_150)) %>% # Scenario A damages
+  mutate(warming_baseline_2050 = 
+           case_when( year > 2050 ~ 1.29,
+                      TRUE ~ warming_baseline
+           )) %>% # Scenario B warming
+  mutate(predicted_baseline_2050 = damage_function(warming_baseline_2050)) #Scenario B damages
+
+#present value of damages up to 2100 under Policy A
+
+A_baseline <- scc_function(data_warming$damage_no_pulse, 0.02)
+A_baseline_150 <- scc_function(data_warming$predicted_baseline_150, 0.02)
+
+A_expected_value <- (A_baseline * 0.5) + (A_baseline_150 * 0.5)
+
+#present value of damages up to 2100 under Policy B
+
+B_expected_value <- scc_function(data_warming$predicted_baseline_2050, 0.02)
+
+#Policy A costs $0 and Policy B costs X, how large could x be for it to make economic sense to pursue Policy b instead of Policy A
+
+max_cost <- A_expected_value - B_expected_value
+
+#How does answer change if society is risk averse (rather than risk neutral)?
+
+
+
+```
 
